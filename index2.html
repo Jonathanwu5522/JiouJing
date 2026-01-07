@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>九井工業｜客戶訂單查詢系統</title>
+<style>
+:root{--bg:#0b1220;--card:#121b2e;--muted:#9fb0d0;--text:#eaf0ff;--line:#263554;}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC",Arial;background:linear-gradient(180deg,#071022,#0b1220);color:var(--text)}
+header{padding:16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(11,18,32,.92);backdrop-filter:blur(6px);z-index:5}
+h1{margin:0;font-size:18px}
+.sub{margin-top:6px;color:var(--muted);font-size:13px;line-height:1.5}
+main{max-width:1150px;margin:0 auto;padding:16px;display:grid;gap:14px}
+.card{background:rgba(18,27,46,.9);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.card h2{margin:0;padding:14px 14px 0;font-size:16px}
+.content{padding:14px}
+.inline{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+input{padding:10px;border-radius:10px;border:1px solid #33456f;background:#0c1324;color:var(--text);outline:none}
+input:focus{border-color:#4b6cff}
+.btn{cursor:pointer;border:1px solid #3a4f7f;background:#132044;color:var(--text);padding:10px 12px;border-radius:10px;font-weight:700}
+.btn.primary{background:#1d3cff;border-color:#1d3cff}
+.btn.ok{background:rgba(37,195,107,.14);border-color:rgba(37,195,107,.5)}
+.btn.danger{background:transparent;border-color:#b24a4a;color:#ffd6d6}
+.hint{color:var(--muted);font-size:12px;line-height:1.5}
+.hr{height:1px;background:var(--line);margin:12px 0}
+table{width:100%;border-collapse:collapse}
+th,td{border-bottom:1px solid var(--line);padding:8px 6px;font-size:12px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:700}
+.k{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:12px;border:1px solid #33456f;background:#0c1324}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;background:#0c1324;border:1px solid #33456f;color:var(--text);padding:10px 12px;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.35);display:none;max-width:92vw}
+.toast.show{display:block}
+details{background:#0c1324;border:1px solid #33456f;border-radius:12px;padding:10px}
+summary{cursor:pointer}
+a.btn{color:var(--text);text-decoration:none;display:inline-flex;align-items:center}
+</style>
+</head>
+<body>
+<header>
+  <div class="inline" style="justify-content:space-between">
+    <div>
+      <h1>九井工業｜客戶訂單查詢系統</h1>
+      <div class="sub">依客戶 + 品名 + 進貨日期查詢。資料來源：本機 <span class="k">ninewell_orders_v13</span> 或匯入 CSV（合併/覆蓋）。</div>
+    </div>
+    <div class="inline">
+      <a class="btn" href="../index.html">回主頁</a>
+      <a class="btn primary" href="../input/index.html">去輸入系統</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="card">
+    <h2>查詢條件</h2>
+    <div class="content">
+      <div class="inline">
+        <span class="hint">客戶</span>
+        <input id="qCustomer" placeholder="例如：台積 / ABC" style="min-width:200px"/>
+
+        <span class="hint">品名</span>
+        <input id="qProduct" placeholder="例如：螺絲 / 軸心" style="min-width:180px"/>
+
+        <span class="hint">進貨日期</span>
+        <div class="inline" style="gap:8px">
+          <input id="qInFrom" placeholder="起 (YYYY-MM-DD)" readonly style="width:150px"/>
+          <button class="btn" type="button" data-date-btn="qInFrom">📅</button>
+        </div>
+        <div class="inline" style="gap:8px">
+          <input id="qInTo" placeholder="迄 (YYYY-MM-DD)" readonly style="width:150px"/>
+          <button class="btn" type="button" data-date-btn="qInTo">📅</button>
+        </div>
+
+        <button class="btn primary" id="btnSearch" type="button">查詢</button>
+        <button class="btn" id="btnClear" type="button">清除</button>
+        <span class="badge">命中：<span id="hitCount" class="k">0</span></span>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="inline">
+        <button class="btn danger" id="btnLoadNewCsv" type="button">載入新 CSV（覆蓋本機）</button>
+        <button class="btn ok" id="btnImportCsv" type="button">匯入 CSV（合併）</button>
+        <input id="csvFileInput" type="file" accept=".csv,text/csv" style="display:none"/>
+        <input id="csvFileInputNew" type="file" accept=".csv,text/csv" style="display:none"/>
+        <button class="btn" id="btnExportFiltered" type="button">匯出查詢結果 CSV</button>
+        <button class="btn danger" id="btnClearLocal" type="button">清空本機資料</button>
+      </div>
+
+      <div class="hint" style="margin-top:8px">
+        覆蓋＝清空舊資料再載入；合併＝以 order_no 去重後加入（輸入/查詢共用）。
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>查詢結果</h2>
+    <div class="content" style="overflow:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>訂單號</th>
+            <th>區域</th>
+            <th>客戶</th>
+            <th>品名</th>
+            <th class="k">進貨</th>
+            <th class="k">預訂出貨</th>
+            <th>級別</th>
+            <th>包裝別</th>
+            <th>沾油</th>
+            <th>建立時間</th>
+            <th>明細</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<!-- 單一月曆 -->
+<div id="datePickerModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:9999">
+  <div style="width:min(360px,92vw);background:#0c1324;border:1px solid #33456f;border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.4);padding:12px">
+    <div class="inline" style="justify-content:space-between">
+      <button class="btn" id="dpPrev" type="button">＜</button>
+      <div class="k" id="dpTitle" style="font-weight:800"></div>
+      <button class="btn" id="dpNext" type="button">＞</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:10px;color:var(--muted);font-size:12px;text-align:center">
+      <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+    </div>
+    <div id="dpGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:8px"></div>
+    <div class="inline" style="justify-content:flex-end;margin-top:12px">
+      <button class="btn" id="dpClear" type="button">清空</button>
+      <button class="btn danger" id="dpClose" type="button">關閉</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var STORAGE_KEY="ninewell_orders_v13";
+
+var HEADERS=[
+ "進貨日期","預訂出貨日期","級別","區域","客戶","品名","材質","數量","重量","包裝別","沾油","注意事項",
+ "排爐型式","預熱時間(分)","冷卻方式",
+ "TF1時間(分)","TF1溫度(C)",
+ "AB1時間(分)","AB1溫度(C)",
+ "拆爐型式","後處理",
+ "AB2時間(分)","AB2溫度(C)",
+ "硬度","化合層","粗度","鹽霧",
+ "Price"
+];
+var CSV_HEADERS=["order_no","created_at"].concat(HEADERS);
+
+function $(id){return document.getElementById(id);}
+function toast(msg, ok){
+  if(ok===undefined) ok=true;
+  var el=$("toast");
+  el.textContent=msg;
+  el.style.borderColor= ok ? "rgba(37,195,107,.55)" : "rgba(255,91,91,.6)";
+  el.classList.add("show");
+  setTimeout(function(){el.classList.remove("show");}, 2400);
+}
+function normalize(s){return String(s||"").trim().toLowerCase();}
+function getLocalOrders(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]");}catch(e){return [];}}
+
+/* CSV helpers */
+function csvEscape(v){
+  if(v===null||v===undefined) return "";
+  var s=String(v);
+  if(/[",\n\r]/.test(s)) return '"'+s.replace(/"/g,'""')+'"';
+  return s;
+}
+function rowsToCsv(rows){
+  var lines=[CSV_HEADERS.join(",")];
+  rows.forEach(function(o){
+    var row=CSV_HEADERS.map(function(h){return csvEscape(o[h]!==undefined?o[h]:"");});
+    lines.push(row.join(","));
+  });
+  return lines.join("\r\n");
+}
+function downloadCsv(filename, text){
+  var blob=new Blob(["\ufeff"+text], {type:"text/csv;charset=utf-8"});
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href); a.remove();},0);
+}
+function parseCsvRow(line){
+  var out=[], cur="", inQ=false;
+  for(var i=0;i<line.length;i++){
+    var ch=line[i];
+    if(inQ){
+      if(ch==='"'){ if(line[i+1]==='"'){cur+='"'; i++;} else inQ=false; }
+      else cur+=ch;
+    }else{
+      if(ch==='"') inQ=true;
+      else if(ch===','){ out.push(cur); cur=""; }
+      else cur+=ch;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+function parseCsvText(text){
+  var lines=text.split(/\r?\n/).filter(function(l){return l.trim()!=="";});
+  if(lines.length===0) return [];
+  var header=parseCsvRow(lines[0]).map(function(h){return h.replace(/^\ufeff/,"").trim();});
+  var idx={}; header.forEach(function(h,i){idx[h]=i;});
+  if(idx["order_no"]===undefined) return [];
+  var out=[];
+  for(var r=1;r<lines.length;r++){
+    var cols=parseCsvRow(lines[r]);
+    var orderNo=(cols[idx["order_no"]]||"").trim();
+    if(!orderNo) continue;
+    var obj={};
+    obj["order_no"]=orderNo;
+    obj["created_at"]= idx["created_at"]===undefined ? "" : (cols[idx["created_at"]]||"");
+    HEADERS.forEach(function(h){
+      var j=idx[h];
+      obj[h]= (j===undefined) ? "" : (cols[j]||"");
+    });
+    out.push(obj);
+  }
+  return out;
+}
+
+/* date compare */
+function dateToNum(s){
+  s=String(s||"").trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  return parseInt(s.replace(/-/g,""),10);
+}
+
+var lastFiltered=[];
+
+function render(rows){
+  lastFiltered=rows;
+  $("hitCount").textContent=String(rows.length);
+  var tb=$("tbody"); tb.innerHTML="";
+  rows.forEach(function(o){
+    var details="";
+    CSV_HEADERS.forEach(function(h){
+      if(h==="order_no"||h==="created_at") return;
+      details += '<div><span class="hint">'+h+'：</span>'+(o[h]||"")+'</div>';
+    });
+    var tr=document.createElement("tr");
+    tr.innerHTML=
+      '<td class="k">'+(o.order_no||"")+'</td>'+
+      '<td>'+(o["區域"]||"")+'</td>'+
+      '<td>'+(o["客戶"]||"")+'</td>'+
+      '<td>'+(o["品名"]||"")+'</td>'+
+      '<td class="k">'+(o["進貨日期"]||"")+'</td>'+
+      '<td class="k">'+(o["預訂出貨日期"]||"")+'</td>'+
+      '<td>'+(o["級別"]||"")+'</td>'+
+      '<td>'+(o["包裝別"]||"")+'</td>'+
+      '<td>'+(o["沾油"]||"")+'</td>'+
+      '<td class="k">'+(o.created_at||"")+'</td>'+
+      '<td><details><summary>查看</summary><div style="margin-top:8px">'+details+'</div></details></td>';
+    tb.appendChild(tr);
+  });
+}
+
+function doSearch(){
+  var qCust=normalize($("qCustomer").value);
+  var qProd=normalize($("qProduct").value);
+  var fromNum=dateToNum($("qInFrom").value);
+  var toNum=dateToNum($("qInTo").value);
+
+  var all=getLocalOrders();
+  var rows=all.filter(function(o){
+    if(qCust && normalize(o["客戶"]).indexOf(qCust)===-1) return false;
+    if(qProd && normalize(o["品名"]).indexOf(qProd)===-1) return false;
+
+    if(fromNum!==null || toNum!==null){
+      var inNum=dateToNum(o["進貨日期"]);
+      if(inNum===null) return false;
+      if(fromNum!==null && inNum<fromNum) return false;
+      if(toNum!==null && inNum>toNum) return false;
+    }
+    return true;
+  });
+
+  rows.sort(function(a,b){return normalize(b.created_at).localeCompare(normalize(a.created_at));});
+  render(rows);
+}
+
+$("btnSearch").addEventListener("click", doSearch);
+["qCustomer","qProduct","qInFrom","qInTo"].forEach(function(id){
+  $(id).addEventListener("keydown", function(e){ if(e.key==="Enter") doSearch(); });
+});
+$("btnClear").addEventListener("click", function(){
+  $("qCustomer").value="";
+  $("qProduct").value="";
+  $("qInFrom").value="";
+  $("qInTo").value="";
+  doSearch();
+});
+
+$("btnExportFiltered").addEventListener("click", function(){
+  if(!lastFiltered || lastFiltered.length===0){toast("目前查詢結果為 0，無法匯出", false); return;}
+  downloadCsv("ninewell_orders_query.csv", rowsToCsv(lastFiltered));
+  toast("已下載查詢結果 CSV");
+});
+
+$("btnClearLocal").addEventListener("click", function(){
+  var ok=confirm("確定要清空本機資料？（輸入/查詢都會清空，不可復原）");
+  if(!ok) return;
+  localStorage.removeItem(STORAGE_KEY);
+  toast("已清空本機資料");
+  doSearch();
+});
+
+$("btnImportCsv").addEventListener("click", function(){ $("csvFileInput").click(); });
+$("btnLoadNewCsv").addEventListener("click", function(){ $("csvFileInputNew").click(); });
+
+function importCsvIntoLocal(text, mode){
+  var rows=parseCsvText(text);
+  if(rows.length===0){toast("匯入失敗：沒有讀到資料列（請確認表頭）", false); return;}
+  if(mode==="replace"){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+    toast("已載入新 CSV（覆蓋）：" + rows.length + " 筆");
+    doSearch();
+    return;
+  }
+  var local=getLocalOrders();
+  var map={}; local.forEach(function(o){map[o.order_no]=o;});
+  rows.forEach(function(o){ if(o.order_no && !map[o.order_no]) map[o.order_no]=o; });
+  var merged=Object.values(map);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+  toast("已匯入並合併 " + rows.length + " 筆；本機共 " + merged.length + " 筆");
+  doSearch();
+}
+
+$("csvFileInput").addEventListener("change", function(e){
+  var file=e.target.files && e.target.files[0]; if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(){ importCsvIntoLocal(String(reader.result||""), "merge"); };
+  reader.readAsText(file);
+  e.target.value="";
+});
+$("csvFileInputNew").addEventListener("change", function(e){
+  var file=e.target.files && e.target.files[0]; if(!file) return;
+  var ok=confirm("此操作會用新 CSV 覆蓋本機資料（輸入/查詢共用）。\n確定要載入新 CSV 嗎？");
+  if(!ok){e.target.value=""; return;}
+  var reader=new FileReader();
+  reader.onload=function(){ importCsvIntoLocal(String(reader.result||""), "replace"); };
+  reader.readAsText(file);
+  e.target.value="";
+});
+
+/* calendar (single) */
+function pad(n,w){n=String(n);return n.length>=w?n:(new Array(w-n.length+1).join("0")+n);}
+var dpTargetId=null, dpYear=null, dpMonth=null;
+function dpFmt(y,m,day){return y+"-"+pad(m+1,2)+"-"+pad(day,2);}
+function dpOpen(targetId){
+  dpTargetId=targetId;
+  var v=($(targetId).value||"").trim();
+  var d=/^\d{4}-\d{2}-\d{2}$/.test(v) ? new Date(v+"T00:00:00") : new Date();
+  dpYear=d.getFullYear(); dpMonth=d.getMonth();
+  dpRender();
+  $("datePickerModal").style.display="flex";
+}
+function dpClose(){ $("datePickerModal").style.display="none"; dpTargetId=null; }
+function dpRender(){
+  $("dpTitle").textContent=dpYear+"-"+pad(dpMonth+1,2);
+  var grid=$("dpGrid"); grid.innerHTML="";
+  var first=new Date(dpYear, dpMonth, 1);
+  var startDow=first.getDay();
+  var days=new Date(dpYear, dpMonth+1, 0).getDate();
+  for(var i=0;i<startDow;i++){
+    var blank=document.createElement("div"); blank.style.padding="10px 0"; grid.appendChild(blank);
+  }
+  for(var day=1; day<=days; day++){
+    (function(dayVal){
+      var b=document.createElement("button");
+      b.type="button";
+      b.className="btn";
+      b.style.padding="10px 0";
+      b.style.background="#0c1324";
+      b.style.borderColor="#33456f";
+      b.textContent=String(dayVal);
+      b.onclick=function(){
+        if(dpTargetId) $(dpTargetId).value=dpFmt(dpYear, dpMonth, dayVal);
+        dpClose();
+        doSearch();
+      };
+      grid.appendChild(b);
+    })(day);
+  }
+}
+$("dpPrev").onclick=function(){dpMonth--; if(dpMonth<0){dpMonth=11; dpYear--;} dpRender();};
+$("dpNext").onclick=function(){dpMonth++; if(dpMonth>11){dpMonth=0; dpYear++;} dpRender();};
+$("dpClose").onclick=dpClose;
+$("dpClear").onclick=function(){if(dpTargetId) $(dpTargetId).value=""; dpClose(); doSearch();};
+$("datePickerModal").onclick=function(e){ if(e.target && e.target.id==="datePickerModal") dpClose(); };
+
+document.addEventListener("click", function(e){
+  var t=e.target;
+  if(t && t.getAttribute && t.getAttribute("data-date-btn")) dpOpen(t.getAttribute("data-date-btn"));
+});
+$("qInFrom").addEventListener("click", function(){dpOpen("qInFrom");});
+$("qInTo").addEventListener("click", function(){dpOpen("qInTo");});
+
+doSearch();
+</script>
+</body>
+</html>
