@@ -1,0 +1,40 @@
+<!doctype html><html lang="zh-Hant"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>九井工業｜客戶訂單系統</title>
+<style>
+:root{--bg:#0b1220;--card:#121b2e;--muted:#9fb0d0;--text:#eaf0ff;--line:#263554;}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC",Arial;background:linear-gradient(180deg,#071022,#0b1220);color:var(--text)}
+header{padding:18px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(11,18,32,.92);backdrop-filter:blur(6px)}
+h1{margin:0;font-size:18px}
+.sub{margin-top:6px;color:var(--muted);font-size:13px;line-height:1.5}
+main{max-width:980px;margin:0 auto;padding:18px;display:grid;gap:14px}
+.grid{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:900px){.grid{grid-template-columns:1fr 1fr}}
+.card{background:rgba(18,27,46,.9);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:16px}
+.card h2{margin:0 0 8px;font-size:16px}
+.hint{color:var(--muted);font-size:12px;line-height:1.5}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;border:1px solid #3a4f7f;background:#132044;color:var(--text);padding:12px 14px;border-radius:12px;font-weight:700;text-decoration:none}
+.btn.primary{background:#1d3cff;border-color:#1d3cff}
+.btn:hover{border-color:#5a74b6}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.k{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+</style></head><body>
+<header>
+  <h1>九井工業｜客戶訂單系統</h1>
+  <div class="sub">離線版（直接開檔可用）。輸入/查詢共用資料鍵：<span class="k">ninewell_orders_v13</span></div>
+</header>
+<main>
+  <div class="grid">
+    <section class="card">
+      <h2>① 客戶訂單輸入系統</h2>
+      <div class="hint">新增/修改/刪除、右側 CSV 匯入/匯出（Excel 不亂碼）。</div>
+      <div class="row"><a class="btn primary" href="./input/index.html">開啟輸入系統</a></div>
+    </section>
+    <section class="card">
+      <h2>② 客戶訂單查詢系統</h2>
+      <div class="hint">以客戶名稱查詢；可匯入 CSV（合併/覆蓋）；可匯出查詢結果。</div>
+      <div class="row"><a class="btn" href="./query/index.html">開啟查詢系統</a></div>
+    </section>
+  </div>
+</main></body></html>
